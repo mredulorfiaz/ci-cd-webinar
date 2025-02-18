@@ -43,6 +43,26 @@ jobs:
         run: |
           docker build -t $IMAGE_NAME:$IMAGE_TAG .
           docker push $IMAGE_NAME:$IMAGE_TAG
+  deploy:
+    name: Deploy app to AWS EC2
+    runs-on: ubuntu-latest
+    needs: build-and-push-docker-image
+    steps:
+      - name: Checkout main branch code
+        uses: actions/checkout@v4
+      - name: executing remote ssh commands using password
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          script: |
+            echo "Pull docker image"
+            docker pull ${{ vars.DOCKERHUB_USERNAME }}/ci-cd-webinar:${{ github.sha }}
+            echo "Stop and remove previous running container"
+            docker stop flask-app || true
+            docker rm flask-app || true
+            docker run -d --name flask-app -p 5000:5000 ${{ vars.DOCKERHUB_USERNAME }}/ci-cd-webinar:${{ github.sha }}
 
           
 
